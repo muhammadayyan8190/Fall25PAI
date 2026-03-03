@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Object Counter</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { text-align: center; color: white; margin-bottom: 30px; }
+        .header h1 { font-size: 2.5em; margin-bottom: 10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+        .header p { font-size: 1.1em; opacity: 0.9; }
+        .content { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px; }
+        .card { background: white; border-radius: 15px; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        .card h2 { color: #667eea; margin-bottom: 20px; font-size: 1.5em; }
+        .upload-area { border: 2px dashed #667eea; border-radius: 10px; padding: 40px; text-align: center; cursor: pointer; transition: all 0.3s ease; background: #f8f9ff; }
+        .upload-area:hover { border-color: #764ba2; background: #f0f0ff; }
+        .upload-area.dragover { border-color: #764ba2; background: #e8e8ff; transform: scale(1.02); }
+        .upload-area input[type="file"] { display: none; }
+        .upload-icon { font-size: 3em; margin-bottom: 15px; }
+        .upload-text { color: #667eea; font-weight: 600; margin-bottom: 5px; }
+        .upload-subtext { color: #999; font-size: 0.9em; }
+        .btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px 30px; border-radius: 25px; font-size: 1em; cursor: pointer; transition: all 0.3s ease; margin-top: 20px; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(102,126,234,0.4); }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .progress-container { margin-top: 20px; display: none; }
+        .progress-bar { width: 100%; height: 8px; background: #e0e0e0; border-radius: 4px; overflow: hidden; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); width: 0%; transition: width 0.3s ease; }
+        .progress-text { text-align: center; margin-top: 10px; color: #667eea; font-weight: 600; }
+        .results { display: none; }
+        .results.show { display: block; }
+        .results h3 { color: #667eea; margin-bottom: 15px; }
+        .object-list { list-style: none; }
+        .object-item { background: #f8f9ff; padding: 12px 15px; margin-bottom: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid #667eea; }
+        .object-name { font-weight: 600; color: #333; text-transform: capitalize; }
+        .object-count { background: #667eea; color: white; padding: 4px 12px; border-radius: 20px; font-weight: bold; }
+        .video-container { background: #000; border-radius: 10px; overflow: hidden; box-shadow: 0 5px 20px rgba(0,0,0,0.2); }
+        .video-container video, .video-container img { width: 100%; height: auto; display: block; }
+        .video-info { background: white; padding: 15px; border-top: 1px solid #e0e0e0; }
+        .video-info p { color: #666; margin: 5px 0; font-size: 0.9em; }
+        .error { background: #ffebee; color: #c62828; padding: 15px; border-radius: 8px; margin-top: 15px; border-left: 4px solid #c62828; display: none; }
+        .error.show { display: block; }
+        .success { background: #e8f5e9; color: #2e7d32; padding: 15px; border-radius: 8px; margin-top: 15px; border-left: 4px solid #2e7d32; display: none; }
+        .success.show { display: block; }
+        .file-name { color: #667eea; font-weight: 600; margin-top: 10px; padding: 10px; background: #f8f9ff; border-radius: 5px; }
+        @media (max-width: 768px) { .content { grid-template-columns: 1fr; } .header h1 { font-size: 1.8em; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎬 Object Counter</h1>
+            <p>Real-time video analysis with instant detection</p>
+        </div>
+        
+        <div class="content">
+            <div class="card">
+                <h2>Upload Video</h2>
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📹</div>
+                    <div class="upload-text">Click or drag video</div>
+                    <div class="upload-subtext">MP4, AVI, MOV, MKV (Max 500MB)</div>
+                    <input type="file" id="fileInput" accept="video/*">
+                </div>
+                <div class="file-name" id="fileName" style="display: none;"></div>
+                <button class="btn" id="uploadBtn" disabled>Analyze Video</button>
+                <div class="progress-container" id="progressContainer">
+                    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+                    <div class="progress-text" id="progressText">Processing...</div>
+                </div>
+                <div class="error" id="errorMsg"></div>
+                <div class="success" id="successMsg"></div>
+            </div>
+            
+            <div class="card">
+                <h2>Detection Results</h2>
+                <div class="results" id="results">
+                    <h3>Detected Objects</h3>
+                    <ul class="object-list" id="objectList"></ul>
+                </div>
+                <div style="color: #999; text-align: center; padding: 40px 20px;" id="noResults">
+                    📊 Upload video to see results
+                </div>
+            </div>
+        </div>
+        
+
+        
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        const errorMsg = document.getElementById('errorMsg');
+        const successMsg = document.getElementById('successMsg');
+        const results = document.getElementById('results');
+        const noResults = document.getElementById('noResults');
+        const objectList = document.getElementById('objectList');
+        const fileName = document.getElementById('fileName');
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+        uploadArea.addEventListener('dragleave', () => { uploadArea.classList.remove('dragover'); });
+        uploadArea.addEventListener('drop', (e) => { e.preventDefault(); uploadArea.classList.remove('dragover'); fileInput.files = e.dataTransfer.files; handleFileSelect(); });
+        fileInput.addEventListener('change', handleFileSelect);
+
+        function handleFileSelect() {
+            const file = fileInput.files[0];
+            if (file) {
+                fileName.textContent = `✓ ${file.name}`;
+                fileName.style.display = 'block';
+                uploadBtn.disabled = false;
+            }
+        }
+
+        uploadBtn.addEventListener('click', uploadVideo);
+
+        function showError(msg) { errorMsg.textContent = '❌ ' + msg; errorMsg.classList.add('show'); successMsg.classList.remove('show'); }
+        function showSuccess(msg) { successMsg.textContent = msg; successMsg.classList.add('show'); errorMsg.classList.remove('show'); }
+
+
+        function uploadVideo() {
+            const file = fileInput.files[0];
+            if (!file) { showError('Select video'); return; }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            uploadBtn.disabled = true;
+            progressContainer.style.display = 'block';
+            progressFill.style.width = '0%';
+
+            fetch('/upload', { method: 'POST', body: formData })
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) {
+                    progressFill.style.width = '100%';
+                    showSuccess('✅ Video analyzed! Vehicle counts below.');
+                    // populate list directly from returned objects
+                    if (d.objects) {
+                        objectList.innerHTML = '';
+                        for (const [k, v] of Object.entries(d.objects)) {
+                            const li = document.createElement('li');
+                            li.className = 'object-item';
+                            li.innerHTML = `<span class="object-name">${k}</span><span class="object-count">${v}</span>`;
+                            objectList.appendChild(li);
+                        }
+                        results.classList.add('show');
+                        noResults.style.display = 'none';
+                    }
+                    fileName.style.display = 'none';
+                    uploadBtn.disabled = false;
+                    setTimeout(() => progressContainer.style.display = 'none', 2000);
+                } else {
+                    showError(d.error || 'Failed');
+                    uploadBtn.disabled = false;
+                    progressContainer.style.display = 'none';
+                }
+            })
+            .catch(e => {
+                showError(e.message);
+                uploadBtn.disabled = false;
+                progressContainer.style.display = 'none';
+            });
+        }
+    </script>
+</body>
+</html>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+        
+        .upload-area {
+            border: 2px dashed #667eea;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f8f9ff;
+        }
+        
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f0f0ff;
+        }
+        
+        .upload-area.dragover {
+            border-color: #764ba2;
+            background: #e8e8ff;
+            transform: scale(1.02);
+        }
+        
+        .upload-area input[type="file"] {
+            display: none;
+        }
+        
+        .upload-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+        
+        .upload-text {
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .upload-subtext {
+            color: #999;
+            font-size: 0.9em;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .progress-container {
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .progress-text {
+            text-align: center;
+            margin-top: 10px;
+            color: #667eea;
+            font-weight: 600;
+        }
+        
+        .results {
+            display: none;
+        }
+        
+        .results.show {
+            display: block;
+        }
+        
+        .results h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+        
+        .object-list {
+            list-style: none;
+        }
+        
+        .object-item {
+            background: #f8f9ff;
+            padding: 12px 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 4px solid #667eea;
+        }
+        
+        .object-name {
+            font-weight: 600;
+            color: #333;
+            text-transform: capitalize;
+        }
+        
+        .object-count {
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        
+        .video-container {
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        .video-container video {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        
+        .video-info {
+            background: white;
+            padding: 15px;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        .video-info p {
+            color: #666;
+            margin: 5px 0;
+            font-size: 0.9em;
+        }
+        
+        .video-info strong {
+            color: #333;
+        }
+        
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            border-left: 4px solid #c62828;
+            display: none;
+        }
+        
+        .error.show {
+            display: block;
+        }
+        
+        .success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            border-left: 4px solid #2e7d32;
+            display: none;
+        }
+        
+        .success.show {
+            display: block;
+        }
+        
+        .loading {
+            display: inline-block;
+            margin-left: 10px;
+        }
+        
+        .spinner {
+            border: 3px solid rgba(102, 126, 234, 0.1);
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        @media (max-width: 768px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 1.8em;
+            }
+        }
+        
+        .file-name {
+            color: #667eea;
+            font-weight: 600;
+            margin-top: 10px;
+            padding: 10px;
+            background: #f8f9ff;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎬 Object Counter</h1>
+            <p>Upload a video and analyze object counts automatically</p>
+        </div>
+        
+        <div class="content">
+            <!-- Upload Section -->
+            <div class="card">
+                <h2>Upload Video</h2>
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📹</div>
+                    <div class="upload-text">Click or drag video here</div>
+                    <div class="upload-subtext">Supported: MP4, AVI, MOV, MKV (Max 500MB)</div>
+                    <input type="file" id="fileInput" accept="video/*">
+                </div>
+                <div class="file-name" id="fileName" style="display: none;"></div>
+                <button class="btn" id="uploadBtn" disabled>Analyze Video</button>
+                <div class="progress-container" id="progressContainer">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div class="progress-text" id="progressText">Processing...</div>
+                </div>
+                <div class="error" id="errorMsg"></div>
+                <div class="success" id="successMsg"></div>
+            </div>
+            
+            <!-- Results Section -->
+            <div class="card">
+                <h2>Detection Results</h2>
+                <div class="results" id="results">
+                    <h3>Detected Objects</h3>
+                    <ul class="object-list" id="objectList"></ul>
+                </div>
+                <div style="color: #999; text-align: center; padding: 40px 20px;" id="noResults">
+                    📊 Upload a video to see results
+                </div>
+            </div>
+        </div>
+        
+    </div>
+
+
+</body>
+</html>
