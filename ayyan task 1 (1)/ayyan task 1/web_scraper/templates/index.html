@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Email Scraper</title>
+</head>
+<body>
+  <h1>Email Scraper</h1>
+  {% if error %}
+    <p style="color:red">{{ error }}</p>
+  {% endif %}
+  <form method="post">
+    <label for="url">Website URL:</label>
+    <input type="text" id="url" name="url" placeholder="https://example.com" size="50">
+    <button type="submit">Scrape</button>
+  </form>
+</body>
+</html>
